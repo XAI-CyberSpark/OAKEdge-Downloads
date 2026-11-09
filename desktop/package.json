@@ -1,0 +1,19 @@
+{
+  "name": "oakedge-desktop",
+  "version": "0.9.14",
+  "private": true,
+  "description": "OAKEdge 桌面工作台",
+  "author": "XAI-CyberSpark",
+  "license": "UNLICENSED",
+  "main": "main.cjs",
+  "packageManager": "pnpm@11.25.0",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test policy.test.cjs",
+    "dist:mac": "electron-builder --mac dmg --publish never"
+  },
+  "devDependencies": {
+    "electron": "45.2.3",
+    "electron-builder": "26.18.0"
+  }
+}

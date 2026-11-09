@@ -1,0 +1,77 @@
+name: Build OAKEdge macOS
+on:
+  push:
+    branches: [codex/macos-desktop]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            arch: arm64
+          - os: macos-15-intel
+            arch: x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - run: npm install --global pnpm@11.25.0
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm run dist:mac --${{ matrix.arch }}
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Verify and launch the packaged app
+        shell: bash
+        run: |
+          if [ '${{ matrix.arch }}' = 'arm64' ]; then target='out/mac-arm64/OAKEdge.app'; else target='out/mac/OAKEdge.app'; fi
+          codesign --verify --deep --strict --verbose=2 "$target"
+          /usr/libexec/PlistBuddy -c 'Print :NSCameraUsageDescription' "$target/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Print :NSMicrophoneUsageDescription' "$target/Contents/Info.plist"
+          "$target/Contents/MacOS/OAKEdge" --smoke-test > out/smoke-${{ matrix.arch }}.log 2>&1 &
+          process=$!
+          (sleep 110; kill "$process" 2>/dev/null || true) & timer=$!
+          set +e
+          wait "$process"; result=$?
+          set -e
+          kill "$timer" 2>/dev/null || true
+          cat out/smoke-${{ matrix.arch }}.log
+          exit "$result"
+      - run: node scripts/release-part.cjs ${{ matrix.arch }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macos-${{ matrix.arch }}
+          path: |
+            desktop/out/*.dmg
+            desktop/out/macos-*.json
+            desktop/out/smoke-*.log
+          compression-level: 0
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: macos-*
+          merge-multiple: true
+          path: desktop/out
+      - run: node desktop/scripts/publish.cjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

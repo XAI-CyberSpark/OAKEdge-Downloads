@@ -1,0 +1,37 @@
+appId: cn.oakedge.desktop
+productName: OAKEdge
+asar: true
+directories:
+  output: out
+  buildResources: build
+files:
+  - main.cjs
+  - policy.cjs
+  - preload.cjs
+  - package.json
+mac:
+  category: public.app-category.productivity
+  minimumSystemVersion: '13.0'
+  icon: build/icon.png
+  identity: '-'
+  hardenedRuntime: true
+  notarize: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  target:
+    - dmg
+  artifactName: 'OAKEdge-${version}-macos-${arch}.${ext}'
+  extendInfo:
+    NSCameraUsageDescription: 用于你启动的 OAKEdge 摄像头检测任务。
+    NSMicrophoneUsageDescription: 用于你启动的 OAKEdge 声音识别任务。
+dmg:
+  sign: false
+  title: 'OAKEdge ${version}'
+  contents:
+    - x: 130
+      y: 180
+      type: file
+    - x: 410
+      y: 180
+      type: link
+      path: /Applications
